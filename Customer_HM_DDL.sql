@@ -10,9 +10,9 @@ Create table CUSTOMER (
 
 /* column order is Customer_key, Customer_name, Customer_ID, Parent_key, Current_Description */
 insert into customer values (100,'Pomegranate','C001',NULL,'N');
-insert into customer values (101,'iPip Design''C002',104,'Y');
-insert into customer values (102,'iSongs Store''C003',106,'Y');
-insert into customer values (103,'PicCzar Movies''C004',106,'N');
+insert into customer values (101,'iPip Design','C002',104,'Y');
+insert into customer values (102,'iSongs Store','C003',106,'Y');
+insert into customer values (103,'PicCzar Movies','C004',106,'N');
 insert into customer values (104,'POM Computing','C005',106,'Y');
 insert into customer values (105,'POM Store','C006',104,'Y');
 insert into customer values (106,'Pomegranate','C001',NULL,'Y');
