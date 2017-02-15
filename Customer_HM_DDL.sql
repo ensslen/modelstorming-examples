@@ -14,7 +14,7 @@ Create table CUSTOMER (
 insert into customer values (100,'Pomegranate','C001',NULL,'N');
 insert into customer values (106,'Pomegranate','C001',NULL,'Y');
 insert into customer values (102,'iSongs Store','C003',106,'Y');
-insert into customer values (103,'PicCzar Movies','C004',106,'N');
+insert into customer values (103,'PicCzar Movies','C004',106,'Y');
 insert into customer values (104,'POM Computing','C005',106,'Y');
 insert into customer values (110,'PicCzar Movies','C004',106,'Y');
 insert into customer values (101,'iPip Design','C002',104,'Y');
