@@ -35,36 +35,88 @@ SELECT 3,1,'P',1 FROM dual UNION ALL
 SELECT 4,3,'P',1 FROM dual UNION ALL
 SELECT 5,2,'T',0.2 FROM dual UNION ALL
 SELECT 5,4,'P',0.8 FROM dual UNION ALL
-SELECT 6,4,'P',1 FROM dual;
+SELECT 6,4,'P',0.5 FROM dual UNION ALL
+SELECT 6,5,'P',0.5 FROM dual
+;
 
-CREATE MATERIALIZED VIEW REPORTING_STRUCTURE 
- AS
- WITH employee_reporting AS (
+CREATE MATERIALIZED VIEW REPORTING_STRUCTURE AS
+WITH employee_reporting AS (
     SELECT employee.employee_id
-        ,employee.employee_name
-        ,employee_employee.manager_id
-        /* Default values for top of hierarchy */
-        ,CASE employee_employee.role_type
-            WHEN 'T' THEN 'Temporary'
-            ELSE 'Permanent'
-            END role_type
-        ,coalesce(employee_employee.fte,1) fte
-    FROM employee 
-    LEFT OUTER JOIN employee_employee 
-        ON employee_employee.employee_id = employee.employee_id
-)
- SELECT  CONNECT_BY_ROOT employee_id manager_key,
-         CONNECT_BY_ROOT employee_name manager_name,
-            employee_id employee_key,
-            employee_name,
-            level employee_level,
-            100 * row_number() OVER ( PARTITION BY CONNECT_BY_ROOT employee_id ORDER BY SYS_CONNECT_BY_PATH(employee_id, '/')) sequence_number,
-            CASE CONNECT_BY_ISLEAF WHEN 1 THEN 'Y' ELSE 'N' END lowest_employee,
-            CASE WHEN CONNECT_BY_ROOT manager_id IS NULL THEN 'Y' ELSE 'N' END highest_manager,
-            role_type,
-            /* this only appears to work.  Multiple partial weightings need to be multiplied */
-            fte weighing_factor
-        FROM employee_reporting
-        CONNECT BY
-            PRIOR employee_id = manager_id;
+       ,   employee.employee_name
+       ,   employee_employee.manager_id
+       ,   employee_employee.fte
+       ,CASE WHEN employee_employee.manager_id IS NULL
+            THEN 'Y'
+            ELSE 'N'
+            END
+        highest
+       ,CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM employee_employee reportees
+                    WHERE reportees.manager_id = employee.employee_id
+                )
+            THEN 'N'
+            ELSE 'Y'
+            END
+        lowest
+        , CASE role_type
+        WHEN 'T' THEN 1
+        ELSE 0
+        END role_type
+    FROM employee
+    LEFT OUTER JOIN employee_employee
+    ON employee_employee.employee_id = employee.employee_id
+),hmap (
+    manager_id
+   ,manager_name
+   ,employee_id
+   ,employee_name
+   ,employee_level
+   ,sequence_number
+   ,lowest
+   ,highest
+   ,role_type
+   ,fte
+) AS (
+    SELECT DISTINCT employee_id manager_id
+       ,   employee_name manager_name
+       ,   employee_id
+       ,   employee_name
+       ,   1 employee_level
+       ,   1 sequence_number
+       ,   lowest
+       ,   highest
+       ,   0 role_type
+       ,   1 fte
+    FROM employee_reporting
+    UNION ALL
+    SELECT hmap.manager_id
+       ,   hmap.manager_name
+       ,   er.employee_id
+       ,   er.employee_name
+       ,   1 + hmap.employee_level employee_level
+       , hmap.sequence_number + (row_number() OVER (PARTITION BY er.manager_id ORDER by er.employee_name)) / power(10,hmap.employee_level) sequence_number
+       , er.lowest
+       , hmap.highest
+       , hmap.role_type + er.role_type
+       ,   hmap.fte * er.fte
+    FROM employee_reporting er
+        INNER JOIN hmap ON hmap.employee_id = er.manager_id
+) SELECT 
+  manager_id manager_key
+ ,manager_name
+ ,employee_id employee_key
+ ,employee_name
+ ,employee_level
+ ,sequence_number
+ ,lowest lowest_employee
+ ,highest highest_manager
+ ,CASE role_type
+   WHEN 0 THEN 'Permanent'
+   ELSE 'Temporary'
+  END role_type
+ ,fte
+FROM hmap
+ORDER BY manager_id,sequence_number;
+
 
